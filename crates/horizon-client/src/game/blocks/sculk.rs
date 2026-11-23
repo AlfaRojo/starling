@@ -2315,7 +2315,17 @@ impl Game<'_> {
         // mobs tick). Damage and mounting are raised by `hurt` and
         // `startRiding`, ticking or not.
         let ticking = self.entity_ticking_area();
-        for (id, at, on_ground, in_water, species, damaged, vehicle, age, resting) in snapshot {
+        for (id, mut at, mut on_ground, mut in_water, species, damaged, vehicle, age, resting) in
+            snapshot
+        {
+            // A mob a hook moved after the snapshot ticks from where it is
+            // now: `last` was reset there, so no step is walked.
+            if self.sculk.teleported.contains(&id)
+                && let Some(m) = self.mobs.iter().find(|m| m.id == id)
+            {
+                at = [m.position.x, m.position.y, m.position.z];
+                (on_ground, in_water) = (m.on_ground, m.fluids.in_water);
+            }
             let ticked = self.creatures.ticked.contains(&id)
                 || ticking(at[0].floor() as i32, at[2].floor() as i32);
             if on_ground && ticked {
@@ -2338,9 +2348,7 @@ impl Game<'_> {
                 entry.last = at;
                 entry.on_ground = on_ground;
                 entry.in_water = in_water;
-            } else if emits && !self.sculk.teleported.contains(&id) {
-                // (A mob a hook moved after the snapshot keeps its reset: the
-                // sample is of where it stood, and no step was walked.)
+            } else if emits {
                 let warden = species == Species::Warden;
                 self.entity_motion_events(
                     Who::Mob(id),
