@@ -1,0 +1,2 @@
+# A hook teleporting a later stationary mob mid-scan posts no step: prepared resources.
+horizon-client game::native_entity_refs::sculk_teleport_tests::a_hook_teleporting_a_later_stationary_mob_posts_no_step lib daily resources

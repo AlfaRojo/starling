@@ -100,6 +100,8 @@ pub(super) struct SculkState {
     /// The vehicle each rider had last tick and where it stood.
     mounts: FxHashMap<Who, (u32, [f64; 3])>,
     damaged: FxHashMap<u32, i64>,
+    /// Mobs teleported since this scan's snapshot: their sample is stale.
+    teleported: FxHashSet<u32>,
     /// Set while the mobs' events are posted (`tick_mob_sculk_events`).
     mob_slots: Option<MobSlots>,
     last_health: Option<f32>,
@@ -656,6 +658,7 @@ impl Game<'_> {
         if let Some(steps) = self.sculk.steps.get_mut(&Who::Mob(id)) {
             steps.last = [at.x, at.y, at.z];
         }
+        self.sculk.teleported.insert(id);
     }
 
     /// `GameEvent.Context.of(entity, state)` for a non-living entity.
@@ -2258,7 +2261,7 @@ impl Game<'_> {
         }))
     }
 
-    fn tick_mob_sculk_events(&mut self) {
+    pub(in crate::game) fn tick_mob_sculk_events(&mut self) {
         let snapshot: Vec<(
             u32,
             [f64; 3],
@@ -2303,6 +2306,7 @@ impl Game<'_> {
             listeners,
             next_entity: self.next_entity,
         });
+        self.sculk.teleported.clear();
         // Steps, landings, splashes, flaps and stepping on redstone ore come
         // from the mob's own tick (Entity.move, LivingEntity.aiStep's
         // applyEffectsFromBlocks), which ServerLevel.tick runs only in
@@ -2334,7 +2338,9 @@ impl Game<'_> {
                 entry.last = at;
                 entry.on_ground = on_ground;
                 entry.in_water = in_water;
-            } else if emits {
+            } else if emits && !self.sculk.teleported.contains(&id) {
+                // (A mob a hook moved after the snapshot keeps its reset: the
+                // sample is of where it stood, and no step was walked.)
                 let warden = species == Species::Warden;
                 self.entity_motion_events(
                     Who::Mob(id),
