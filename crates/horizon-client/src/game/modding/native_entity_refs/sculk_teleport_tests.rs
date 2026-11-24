@@ -64,7 +64,7 @@ fn a_hook_teleporting_a_later_stationary_mob_posts_no_step() {
             shared.lock().unwrap().1.clear();
 
             // Mob 1 is hurt this tick; its damage event teleports mob 2.
-            game.mobs[0].last_damage = Some((Damage::fall(), 5));
+            game.mobs[0].record_damage(Damage::fall(), 5.0);
             shared.lock().unwrap().0 = true;
             game.tick_mob_sculk_events();
             assert_eq!(game.mobs[1].position, at(10.5), "the hook moved it");
